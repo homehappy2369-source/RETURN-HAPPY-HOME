@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Return Barang - Happy Home</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header><h1>Return Barang Happy Home</h1></header>
+<nav role="tablist">
+<button role="tab" data-t="input" aria-selected="true">Input return</button>
+<button role="tab" data-t="data" aria-selected="false">Data return</button>
+<button role="tab" data-t="master" aria-selected="false">Master barang</button>
+</nav>
+
+<section id="t-input">
+<div class="card">
+<label for="scan">Scan atau ketik kode barang</label>
+<input type="text" id="scan" autocomplete="off" inputmode="text" autofocus>
+<div class="item" id="item"><span class="k">Barang akan tampil di sini setelah kode di-scan.</span></div>
+<label>Jenis return</label>
+<div class="seg">
+<button class="p" data-j="Pecah Belah" aria-pressed="false">Pecah belah</button>
+<button class="b" data-j="Bukan Pecah Belah" aria-pressed="false">Bukan pecah belah</button>
+</div>
+<label for="ket">Keterangan</label>
+<input type="text" id="ket" autocomplete="off" placeholder="Bebas diisi, boleh kosong">
+<button class="btn full" id="simpan" disabled>Simpan return</button>
+<p class="note">Jenis yang dipilih tetap aktif untuk scan berikutnya. Ganti kapan saja.</p>
+</div>
+</section>
+
+<section id="t-data" class="hide">
+<div class="card">
+<div class="row">
+<button class="btn" id="exP">Export return pecah belah</button>
+<button class="btn alt" id="exB">Export return bukan pecah belah</button>
+</div>
+<p class="note" id="exNote"></p>
+</div>
+<div class="card">
+<div class="row">
+<input type="search" id="cari" placeholder="Cari kode, nama, atau keterangan">
+<select id="fj"><option value="">Semua jenis</option><option>Pecah Belah</option><option>Bukan Pecah Belah</option></select>
+</div>
+<p class="note" id="cnt"></p>
+<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode</th><th>Nama barang</th><th>Jenis</th><th>Keterangan</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+</div>
+</section>
+
+<section id="t-master" class="hide">
+<div class="card">
+<label for="file">IMPORT DATA BARANG</label>
+<input type="file" id="file" accept=".xlsx,.xls,.csv">
+<div id="map" class="hide">
+<div class="row" style="margin-top:12px">
+<div><label for="mk">Kolom kode barang</label><select id="mk"></select></div>
+<div><label for="mn">Kolom nama barang</label><select id="mnm"></select></div>
+<div><label for="mb">Kolom barcode (opsional)</label><select id="mb"></select></div>
+</div>
+<p class="note" id="mInfo"></p>
+<button class="btn full" id="imp">Import master barang</button>
+</div>
+<p class="note">Import ulang file terbaru akan mengganti master lama. Data return tidak terpengaruh.</p>
+</div>
+</div>
+</section>
+</div>
+<div id="toast" role="status"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

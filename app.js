@@ -259,8 +259,16 @@ $("#tb").onclick=async e=>{
   if(cb){
     const id=Number(cb.dataset.check),r=rets.find(x=>Number(x.id)===id);
     if(!r)return;
-    r.status=r.status==="Sudah Diambil"?"Belum Diambil":"Sudah Diambil";
-    try{if(db)await run("ret","readwrite",s=>s.put(r));render()}
+    if(r.status==="Sudah Diambil") {
+      toast("Barang ini sudah diambil dan status tidak dapat dikembalikan.");
+      return;
+    }
+    r.status="Sudah Diambil";
+    try{
+      if(db) await run("ret","readwrite",s=>s.put(r));
+      render();
+      toast("Status: Sudah Diambil");
+    }
     catch(err){toast("Gagal menyimpan status.");console.error(err)}
     return;
   }
@@ -316,17 +324,47 @@ async function rollover(showToast){
   }
 }
 
+function archiveDayLabel(key){
+  const [y,m,d]=key.split("-").map(Number);
+  const dt=new Date(y,m-1,d);
+  return dt.toLocaleDateString("id-ID",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});
+}
 function renderArchive(){
-  const a=[...archives].sort((x,y)=>String(y.ts).localeCompare(String(x.ts)));
-  $("#arcCnt").textContent=a.length?a.length.toLocaleString("id-ID")+" data arsip":"Belum ada arsip Return.";
-  $("#ta").innerHTML=a.map(r=>{
-    const f=fmt(r.ts);
-    return "<tr><td>"+f.tgl+"</td><td>"+f.jam+"</td><td>"+esc(r.kode)+"</td><td>"+esc(r.nama)+"</td><td>"+
-      Number(r.jumlah||1).toLocaleString("id-ID")+"</td><td>"+esc(r.jenis)+"</td><td>"+esc(r.status||"Belum Diambil")+
-      "</td><td>"+esc(r.ket)+"</td><td><button class=\"x\" data-ad=\""+r.id+"\">Hapus</button></td></tr>";
-  }).join("");
+  const groups=new Map();
+  [...archives].sort((x,y)=>String(y.ts).localeCompare(String(x.ts))).forEach(r=>{
+    const key=dkey(r.ts)||"tanpa-tanggal";
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(r);
+  });
+  const total=archives.length;
+  $("#arcCnt").textContent=total
+    ? total.toLocaleString("id-ID")+" data arsip dalam "+groups.size.toLocaleString("id-ID")+" hari"
+    : "Belum ada arsip Return.";
+  let html="";
+  for(const [key,list] of groups){
+    const safeKey=esc(key);
+    const fname=key==="tanpa-tanggal"?"ARSIP RETURN TANPA TANGGAL.xlsx":"ARSIP RETURN "+key+".xlsx";
+    html += '<div class="card" style="margin-top:14px">'+
+      '<div class="row"><strong>'+esc(archiveDayLabel(key))+'</strong><span class="note">'+list.length.toLocaleString("id-ID")+' data</span><button class="btn" data-ae="'+safeKey+'">Export Excel Hari Ini</button></div>'+
+      '<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode Barang</th><th>Nama Barang</th><th>Jumlah</th><th>Jenis Return</th><th>Status</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>'+
+      list.map(r=>{const f=fmt(r.ts);return '<tr><td>'+f.tgl+'</td><td>'+f.jam+'</td><td>'+esc(r.kode)+'</td><td>'+esc(r.nama)+'</td><td>'+Number(r.jumlah||1).toLocaleString("id-ID")+'</td><td>'+esc(r.jenis)+'</td><td>'+esc(r.status||"Belum Diambil")+'</td><td>'+esc(r.ket)+'</td><td><button class="x" data-ad="'+r.id+'">Hapus</button></td></tr>'}).join("")+
+      '</tbody></table></div></div>';
+  }
+  $("#ta").innerHTML=html;
 }
 $("#ta").onclick=async e=>{
+  const ex=e.target.closest("[data-ae]");
+  if(ex){
+    const key=ex.dataset.ae;
+    const rows=archives.filter(r=>(dkey(r.ts)||"tanpa-tanggal")===key).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+    if(!rows.length){toast("Tidak ada data arsip untuk hari ini.");return}
+    const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Status","Keterangan"]]
+      .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,Number(r.jumlah||1),r.jenis,r.status||"Belum Diambil",r.ket]}));
+    const name=key==="tanpa-tanggal"?"ARSIP RETURN TANPA TANGGAL.xlsx":"ARSIP RETURN "+key+".xlsx";
+    downloadXlsx(aoa,"Arsip",name,[12,10,16,44,10,22,18,36]);
+    return;
+  }
+
   const b=e.target.closest("[data-ad]");
   if(!b)return;
   const id=Number(b.dataset.ad);
@@ -360,12 +398,7 @@ function downloadXlsx(aoa,sheet,name,widths){
   a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-$("#exA").onclick=()=>{
-  if(!archives.length){toast("Belum ada arsip");return}
-  const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Status","Keterangan"]]
-    .concat(archives.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,Number(r.jumlah||1),r.jenis,r.status||"Belum Diambil",r.ket]}));
-  downloadXlsx(aoa,"Arsip","ARSIP RETURN HAPPY HOME.xlsx",[12,10,16,44,10,22,18,36]);
-};
+
 
 /* Export Return */
 async function exportXlsx(j,name){
@@ -430,6 +463,15 @@ $("#imp").onclick=async()=>{
     master=m;pend=null;$("#map").classList.add("hide");$("#file").value="";
     renderMasterCount();lookup();toast(arr.length.toLocaleString("id-ID")+" data Master Barang masuk");
   }catch(err){console.error(err);toast("Import Master Barang gagal. Data lama tetap tersimpan bila transaksi dibatalkan.")}
+};
+
+/* Export Service */
+$("#exS").onclick=()=>{
+  if(!services.length){toast("Belum ada data Service");return}
+  const rows=[...services].sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+  const aoa=[["Tanggal","Jam","Nama","Nomor HP","Nama Barang","Kode Barang","Kendala","Keterangan"]]
+    .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,r.nama,r.hp,r.barang,r.kode,r.kendala,r.ket]}));
+  downloadXlsx(aoa,"Service","DATA SERVICE HAPPY HOME.xlsx",[12,10,24,18,32,18,36,36]);
 };
 
 /* Service terpisah. Tidak pernah ikut rollover. */

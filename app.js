@@ -10,10 +10,10 @@ let jenis="";
 let pend=null;
 const archiveOpen=new Set();
 const serviceOpen=new Set();
+let archiveExportOpen="";
 
 const DB_NAME="returnhh";
 const DB_VERSION=3;
-const DAY_CUTOFF_HOUR=22;
 const mem={master:[],ret:[],archive:[],service:[]};
 
 function toast(t){
@@ -291,17 +291,12 @@ $("#tb").onclick=async e=>{
   }catch(err){toast("Gagal menghapus Return.");console.error(err)}
 };
 
-/* Arsip:
-   - sebelum 22.00: semua Return dari tanggal sebelum hari ini dipindahkan
-   - mulai 22.00: semua Return aktif, termasuk hari ini, dipindahkan
-   - service tidak pernah disentuh
-   - perpindahan menggunakan 1 transaksi ret+archive agar add/delete atomik */
+/* Arsip: otomatis saat tanggal berganti. */
 async function rollover(showToast){
-  const now=new Date(),today=dkey(now.toISOString());
-  const shouldArchiveToday=now.getHours()>=DAY_CUTOFF_HOUR;
+  const today=dkey(new Date().toISOString());
   const rows=rets.filter(r=>{
     const day=dkey(r.ts);
-    return day && (day<today || (shouldArchiveToday&&day===today));
+    return day && day<today;
   });
   if(!rows.length)return;
   try{
@@ -311,6 +306,7 @@ async function rollover(showToast){
       rets=rets.filter(r=>!ids.has(Number(r.id)));
       archives=await getAll("archive");
     }else{
+      const now=new Date();
       const copies=rows.map(r=>({...r,id:Date.now()+Math.random(),originalId:r.id,archivedAt:now.toISOString()}));
       mem.archive.push(...copies);
       const ids=new Set(rows.map(r=>Number(r.id)));
@@ -356,42 +352,49 @@ function renderArchive(){
   let html="";
   for(const [key,list] of groups){
     const open=archiveOpen.has(key);
+    const exportOpen=archiveExportOpen===key;
     const bodyId="arc-day-"+key.replace(/[^0-9a-z_-]/gi,"_");
+    const exportPicker=exportOpen ?
+      '<div class="inline-export"><div class="picker-title">Export Return tanggal '+esc(archiveDayLabel(key))+'</div>'+
+      '<div class="export-choice"><button class="btn" data-export-archive-type="Pecah Belah" data-export-archive="'+esc(key)+'">Pecah Belah</button>'+
+      '<button class="btn alt" data-export-archive-type="Bukan Pecah Belah" data-export-archive="'+esc(key)+'">Bukan Pecah Belah</button></div></div>' : '';
     html += '<div class="archive-folder card">'+
       '<div class="folder-head">'+
         '<div><strong>'+esc(archiveDayLabel(key))+'</strong><div class="note">'+list.length.toLocaleString("id-ID")+' data Return</div></div>'+
-        '<button class="btn alt" data-open-archive="'+esc(key)+'">'+(open?'Tutup':'Lihat')+'</button>'+
-      '</div>'+
+        '<div class="folder-actions"><button class="btn alt" data-open-archive="'+esc(key)+'">'+(open?'Tutup':'Lihat')+'</button>'+
+        '<button class="btn" data-toggle-archive-export="'+esc(key)+'">Export</button></div>'+
+      '</div>'+exportPicker+
       '<div id="'+bodyId+'" class="folder-body '+(open?'':'hide')+'">'+
         '<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode Barang</th><th>Nama Barang</th><th>Jumlah</th><th>Jenis Return</th><th>Status</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>'+
-        list.map(r=>{const f=fmt(r.ts);return '<tr><td>'+f.tgl+'</td><td>'+f.jam+'</td><td>'+esc(r.kode)+'</td><td>'+esc(r.nama)+'</td><td>'+Number(r.jumlah||1).toLocaleString("id-ID")+'</td><td>'+esc(r.jenis)+'</td><td>'+esc(r.status||"Belum Diambil")+'</td><td>'+esc(r.ket)+'</td><td><button class="x" data-ad="'+r.id+'">Hapus</button></td></tr>'}).join("")+ 
+        list.map(r=>{const f=fmt(r.ts);return '<tr><td>'+f.tgl+'</td><td>'+f.jam+'</td><td>'+esc(r.kode)+'</td><td>'+esc(r.nama)+'</td><td>'+Number(r.jumlah||1).toLocaleString("id-ID")+'</td><td>'+esc(r.jenis)+'</td><td>'+esc(r.status||"Belum Diambil")+'</td><td>'+esc(r.ket)+'</td><td><button class="x" data-ad="'+r.id+'">Hapus</button></td></tr>'}).join("")+
         '</tbody></table></div></div></div>';
   }
-  $("#ta").innerHTML=html||'<p class="note">Belum ada arsip Return.</p>';
+  $("#ta").innerHTML=html||'<div class="card"><p class="note">Belum ada arsip Return.</p></div>';
 }
-function renderArchiveExportPicker(){
-  const picker=$("#archiveExportPicker"),groups=groupedByDay(archives);
-  if(!groups.size){toast("Belum ada arsip untuk diexport");return}
-  picker.innerHTML='<div class="picker-title">Pilih tanggal Arsip</div>'+[...groups.entries()].map(([key,list])=>
-    '<button class="picker-item" data-export-archive="'+esc(key)+'"><span>'+esc(archiveDayLabel(key))+'</span><span>'+list.length+' data</span></button>'
-  ).join("");
-  picker.classList.remove("hide");
-}
-$("#exportA").onclick=renderArchiveExportPicker;
-$("#archiveExportPicker").onclick=e=>{
-  const b=e.target.closest("[data-export-archive]");
-  if(!b)return;
-  const key=b.dataset.exportArchive;
-  const rows=archives.filter(r=>(dkey(r.ts)||"tanpa-tanggal")===key).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
-  const name=key==="tanpa-tanggal"?"ARSIP RETURN TANPA TANGGAL.xlsx":"ARSIP RETURN "+key+".xlsx";
-  exportReturnDay(rows,name);
-  $("#archiveExportPicker").classList.add("hide");
-};
 $("#ta").onclick=async e=>{
   const op=e.target.closest("[data-open-archive]");
   if(op){
     const key=op.dataset.openArchive;
     archiveOpen.has(key)?archiveOpen.delete(key):archiveOpen.add(key);
+    renderArchive();
+    return;
+  }
+  const tog=e.target.closest("[data-toggle-archive-export]");
+  if(tog){
+    const key=tog.dataset.toggleArchiveExport;
+    archiveExportOpen=archiveExportOpen===key?"":key;
+    renderArchive();
+    return;
+  }
+  const ex=e.target.closest("[data-export-archive-type]");
+  if(ex){
+    const key=ex.dataset.exportArchive;
+    const jenisExport=ex.dataset.exportArchiveType;
+    const rows=archives.filter(r=>(dkey(r.ts)||"tanpa-tanggal")===key&&r.jenis===jenisExport).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+    const safeKey=key==="tanpa-tanggal"?"TANPA TANGGAL":key;
+    const safeJenis=jenisExport.toUpperCase();
+    exportReturnDay(rows,"ARSIP RETURN "+safeKey+" - "+safeJenis+".xlsx");
+    archiveExportOpen="";
     renderArchive();
     return;
   }
@@ -412,7 +415,7 @@ $("#clearA").onclick=async()=>{
   try{
     if(db)await run("archive","readwrite",s=>s.clear());
     else mem.archive=[];
-    archives=[];archiveOpen.clear();renderArchive();toast("Semua arsip dihapus");
+    archives=[];archiveOpen.clear();archiveExportOpen="";renderArchive();toast("Semua arsip dihapus");
   }catch(err){toast("Gagal menghapus semua arsip.");console.error(err)}
 };
 
@@ -512,37 +515,19 @@ function renderService(){
     html+='<div class="service-folder card">'+
       '<div class="folder-head">'+
         '<div><strong>'+esc(serviceDayLabel(key))+'</strong><div class="note">'+list.length.toLocaleString("id-ID")+' data Service</div></div>'+
-        '<button class="btn alt" data-open-service="'+esc(key)+'">'+(open?'Tutup':'Lihat')+'</button>'+
+        '<div class="folder-actions"><button class="btn alt" data-open-service="'+esc(key)+'">'+(open?'Tutup':'Lihat')+'</button>'+
+        '<button class="btn" data-export-service="'+esc(key)+'">Export</button></div>'+
       '</div>'+
       '<div id="'+bodyId+'" class="folder-body '+(open?'':'hide')+'">'+
         '<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Nama</th><th>Nomor HP</th><th>Nama Barang</th><th>Kode</th><th>Kendala</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>'+
-        list.map(r=>{const f=fmt(r.ts);return '<tr><td>'+f.tgl+'</td><td>'+f.jam+'</td><td>'+esc(r.nama)+'</td><td>'+esc(r.hp)+'</td><td>'+esc(r.barang)+'</td><td>'+esc(r.kode)+'</td><td>'+esc(r.kendala)+'</td><td>'+esc(r.ket)+'</td><td><div class="row action-row"><button class="check done" data-sv-taken="'+r.id+'">✓ Sudah Diambil</button><button class="x" data-sd="'+r.id+'">Hapus</button></div></td></tr>'}).join("")+ 
+        list.map(r=>{const f=fmt(r.ts);return '<tr><td>'+f.tgl+'</td><td>'+f.jam+'</td><td>'+esc(r.nama)+'</td><td>'+esc(r.hp)+'</td><td>'+esc(r.barang)+'</td><td>'+esc(r.kode)+'</td><td>'+esc(r.kendala)+'</td><td>'+esc(r.ket)+'</td><td><div class="row action-row"><button class="check done" data-sv-taken="'+r.id+'">✓ Sudah Diambil</button><button class="x" data-sd="'+r.id+'">Hapus</button></div></td></tr>'}).join("")+
         '</tbody></table></div></div></div>';
   }
   $("#ts").innerHTML=html||'<p class="note">Belum ada data Service.</p>';
 }
-function renderServiceExportPicker(){
-  const picker=$("#serviceExportPicker"),groups=groupedByDay(services);
-  if(!groups.size){toast("Belum ada data Service untuk diexport");return}
-  picker.innerHTML='<div class="picker-title">Pilih tanggal Service</div>'+[...groups.entries()].map(([key,list])=>
-    '<button class="picker-item" data-export-service="'+esc(key)+'"><span>'+esc(serviceDayLabel(key))+'</span><span>'+list.length+' data</span></button>'
-  ).join("");
-  picker.classList.remove("hide");
-}
-$("#exS").onclick=renderServiceExportPicker;
-$("#serviceExportPicker").onclick=e=>{
-  const b=e.target.closest("[data-export-service]");
-  if(!b)return;
-  const key=b.dataset.exportService;
-  const rows=services.filter(r=>(dkey(r.ts)||"tanpa-tanggal")===key).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
-  if(!rows.length){toast("Tidak ada data Service untuk tanggal itu.");return}
-  const aoa=[["Tanggal","Jam","Nama","Nomor HP","Nama Barang","Kode Barang","Kendala","Keterangan"]]
-    .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,r.nama,r.hp,r.barang,r.kode,r.kendala,r.ket]}));
-  const name=key==="tanpa-tanggal"?"SERVICE TANPA TANGGAL.xlsx":"SERVICE "+key+".xlsx";
-  downloadXlsx(aoa,"Service",name,[12,10,24,18,32,18,36,36]);
-  $("#serviceExportPicker").classList.add("hide");
-};
+
 $("#simpanService").onclick=simpanService;
+
 
 async function simpanService(){
   const r={
@@ -569,6 +554,17 @@ $("#ts").onclick=async e=>{
     const key=op.dataset.openService;
     serviceOpen.has(key)?serviceOpen.delete(key):serviceOpen.add(key);
     renderService();
+    return;
+  }
+  const ex=e.target.closest("[data-export-service]");
+  if(ex){
+    const key=ex.dataset.exportService;
+    const rows=services.filter(r=>(dkey(r.ts)||"tanpa-tanggal")===key).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+    if(!rows.length){toast("Tidak ada data Service untuk tanggal itu.");return}
+    const aoa=[["Tanggal","Jam","Nama","Nomor HP","Nama Barang","Kode Barang","Kendala","Keterangan"]]
+      .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,r.nama,r.hp,r.barang,r.kode,r.kendala,r.ket]}));
+    const name=key==="tanpa-tanggal"?"SERVICE TANPA TANGGAL.xlsx":"SERVICE "+key+".xlsx";
+    downloadXlsx(aoa,"Service",name,[12,10,24,18,32,18,36,36]);
     return;
   }
   const taken=e.target.closest("[data-sv-taken]");

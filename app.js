@@ -8,6 +8,8 @@ let services=[];
 let cur=null;
 let jenis="";
 let pend=null;
+const archiveOpen=new Set();
+const serviceOpen=new Set();
 
 const DB_NAME="returnhh";
 const DB_VERSION=3;
@@ -329,42 +331,70 @@ function archiveDayLabel(key){
   const dt=new Date(y,m-1,d);
   return dt.toLocaleDateString("id-ID",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});
 }
-function renderArchive(){
+function groupedByDay(rows){
   const groups=new Map();
-  [...archives].sort((x,y)=>String(y.ts).localeCompare(String(x.ts))).forEach(r=>{
+  [...rows].sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).forEach(r=>{
     const key=dkey(r.ts)||"tanpa-tanggal";
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push(r);
   });
+  return groups;
+}
+function exportReturnDay(rows,namePrefix){
+  if(!rows.length){toast("Tidak ada data untuk diexport");return}
+  const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Keterangan"]]
+    .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,Number(r.jumlah||1),r.jenis,r.ket||""]}));
+  downloadXlsx(aoa,"Arsip Return",namePrefix,[12,10,16,44,10,22,50]);
+}
+function renderArchive(){
+  const groups=groupedByDay(archives);
   const total=archives.length;
   $("#arcCnt").textContent=total
     ? total.toLocaleString("id-ID")+" data arsip dalam "+groups.size.toLocaleString("id-ID")+" hari"
     : "Belum ada arsip Return.";
+
   let html="";
   for(const [key,list] of groups){
-    const safeKey=esc(key);
-    const fname=key==="tanpa-tanggal"?"ARSIP RETURN TANPA TANGGAL.xlsx":"ARSIP RETURN "+key+".xlsx";
-    html += '<div class="card" style="margin-top:14px">'+
-      '<div class="row"><strong>'+esc(archiveDayLabel(key))+'</strong><span class="note">'+list.length.toLocaleString("id-ID")+' data</span><button class="btn" data-ae="'+safeKey+'">Export Excel Hari Ini</button></div>'+
-      '<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode Barang</th><th>Nama Barang</th><th>Jumlah</th><th>Jenis Return</th><th>Status</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>'+
-      list.map(r=>{const f=fmt(r.ts);return '<tr><td>'+f.tgl+'</td><td>'+f.jam+'</td><td>'+esc(r.kode)+'</td><td>'+esc(r.nama)+'</td><td>'+Number(r.jumlah||1).toLocaleString("id-ID")+'</td><td>'+esc(r.jenis)+'</td><td>'+esc(r.status||"Belum Diambil")+'</td><td>'+esc(r.ket)+'</td><td><button class="x" data-ad="'+r.id+'">Hapus</button></td></tr>'}).join("")+
-      '</tbody></table></div></div>';
+    const open=archiveOpen.has(key);
+    const bodyId="arc-day-"+key.replace(/[^0-9a-z_-]/gi,"_");
+    html += '<div class="archive-folder card">'+
+      '<div class="folder-head">'+
+        '<div><strong>'+esc(archiveDayLabel(key))+'</strong><div class="note">'+list.length.toLocaleString("id-ID")+' data Return</div></div>'+
+        '<button class="btn alt" data-open-archive="'+esc(key)+'">'+(open?'Tutup':'Lihat')+'</button>'+
+      '</div>'+
+      '<div id="'+bodyId+'" class="folder-body '+(open?'':'hide')+'">'+
+        '<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode Barang</th><th>Nama Barang</th><th>Jumlah</th><th>Jenis Return</th><th>Status</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>'+
+        list.map(r=>{const f=fmt(r.ts);return '<tr><td>'+f.tgl+'</td><td>'+f.jam+'</td><td>'+esc(r.kode)+'</td><td>'+esc(r.nama)+'</td><td>'+Number(r.jumlah||1).toLocaleString("id-ID")+'</td><td>'+esc(r.jenis)+'</td><td>'+esc(r.status||"Belum Diambil")+'</td><td>'+esc(r.ket)+'</td><td><button class="x" data-ad="'+r.id+'">Hapus</button></td></tr>'}).join("")+ 
+        '</tbody></table></div></div></div>';
   }
-  $("#ta").innerHTML=html;
+  $("#ta").innerHTML=html||'<p class="note">Belum ada arsip Return.</p>';
 }
+function renderArchiveExportPicker(){
+  const picker=$("#archiveExportPicker"),groups=groupedByDay(archives);
+  if(!groups.size){toast("Belum ada arsip untuk diexport");return}
+  picker.innerHTML='<div class="picker-title">Pilih tanggal Arsip</div>'+[...groups.entries()].map(([key,list])=>
+    '<button class="picker-item" data-export-archive="'+esc(key)+'"><span>'+esc(archiveDayLabel(key))+'</span><span>'+list.length+' data</span></button>'
+  ).join("");
+  picker.classList.remove("hide");
+}
+$("#exportA").onclick=renderArchiveExportPicker;
+$("#archiveExportPicker").onclick=e=>{
+  const b=e.target.closest("[data-export-archive]");
+  if(!b)return;
+  const key=b.dataset.exportArchive;
+  const rows=archives.filter(r=>(dkey(r.ts)||"tanpa-tanggal")===key).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+  const name=key==="tanpa-tanggal"?"ARSIP RETURN TANPA TANGGAL.xlsx":"ARSIP RETURN "+key+".xlsx";
+  exportReturnDay(rows,name);
+  $("#archiveExportPicker").classList.add("hide");
+};
 $("#ta").onclick=async e=>{
-  const ex=e.target.closest("[data-ae]");
-  if(ex){
-    const key=ex.dataset.ae;
-    const rows=archives.filter(r=>(dkey(r.ts)||"tanpa-tanggal")===key).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
-    if(!rows.length){toast("Tidak ada data arsip untuk hari ini.");return}
-    const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Status","Keterangan"]]
-      .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,Number(r.jumlah||1),r.jenis,r.status||"Belum Diambil",r.ket]}));
-    const name=key==="tanpa-tanggal"?"ARSIP RETURN TANPA TANGGAL.xlsx":"ARSIP RETURN "+key+".xlsx";
-    downloadXlsx(aoa,"Arsip",name,[12,10,16,44,10,22,18,36]);
+  const op=e.target.closest("[data-open-archive]");
+  if(op){
+    const key=op.dataset.openArchive;
+    archiveOpen.has(key)?archiveOpen.delete(key):archiveOpen.add(key);
+    renderArchive();
     return;
   }
-
   const b=e.target.closest("[data-ad]");
   if(!b)return;
   const id=Number(b.dataset.ad);
@@ -382,7 +412,7 @@ $("#clearA").onclick=async()=>{
   try{
     if(db)await run("archive","readwrite",s=>s.clear());
     else mem.archive=[];
-    archives=[];renderArchive();toast("Semua arsip dihapus");
+    archives=[];archiveOpen.clear();renderArchive();toast("Semua arsip dihapus");
   }catch(err){toast("Gagal menghapus semua arsip.");console.error(err)}
 };
 
@@ -404,9 +434,9 @@ function downloadXlsx(aoa,sheet,name,widths){
 async function exportXlsx(j,name){
   const rows=rets.filter(r=>r.jenis===j).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
   if(!rows.length){toast("Belum ada data untuk diexport");return}
-  const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Status","Keterangan"]]
-    .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,Number(r.jumlah||1),r.jenis,r.status||"Belum Diambil",r.ket]}));
-  downloadXlsx(aoa,"Return",name,[12,10,16,44,10,22,18,36]);
+  const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Keterangan"]]
+    .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,Number(r.jumlah||1),r.jenis,r.ket||""]}));
+  downloadXlsx(aoa,"Return",name,[12,10,16,44,10,22,50]);
 }
 $("#exP").onclick=()=>exportXlsx("Pecah Belah","EXPORT RETURN PECAH BELAH.xlsx");
 $("#exB").onclick=()=>exportXlsx("Bukan Pecah Belah","EXPORT RETURN BUKAN PECAH BELAH.xlsx");
@@ -465,16 +495,55 @@ $("#imp").onclick=async()=>{
   }catch(err){console.error(err);toast("Import Master Barang gagal. Data lama tetap tersimpan bila transaksi dibatalkan.")}
 };
 
-/* Export Service */
-$("#exS").onclick=()=>{
-  if(!services.length){toast("Belum ada data Service");return}
-  const rows=[...services].sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+/* Service: tetap tersimpan dan tampil sampai user mengonfirmasi Sudah Diambil. */
+function serviceDayLabel(key){
+  if(key==="tanpa-tanggal")return "Tanpa Tanggal";
+  return archiveDayLabel(key);
+}
+function renderService(){
+  const groups=groupedByDay(services);
+  $("#serviceCnt").textContent=services.length
+    ? services.length.toLocaleString("id-ID")+" data Service dalam "+groups.size.toLocaleString("id-ID")+" hari"
+    : "Belum ada data Service.";
+  let html="";
+  for(const [key,list] of groups){
+    const open=serviceOpen.has(key);
+    const bodyId="svc-day-"+key.replace(/[^0-9a-z_-]/gi,"_");
+    html+='<div class="service-folder card">'+
+      '<div class="folder-head">'+
+        '<div><strong>'+esc(serviceDayLabel(key))+'</strong><div class="note">'+list.length.toLocaleString("id-ID")+' data Service</div></div>'+
+        '<button class="btn alt" data-open-service="'+esc(key)+'">'+(open?'Tutup':'Lihat')+'</button>'+
+      '</div>'+
+      '<div id="'+bodyId+'" class="folder-body '+(open?'':'hide')+'">'+
+        '<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Nama</th><th>Nomor HP</th><th>Nama Barang</th><th>Kode</th><th>Kendala</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>'+
+        list.map(r=>{const f=fmt(r.ts);return '<tr><td>'+f.tgl+'</td><td>'+f.jam+'</td><td>'+esc(r.nama)+'</td><td>'+esc(r.hp)+'</td><td>'+esc(r.barang)+'</td><td>'+esc(r.kode)+'</td><td>'+esc(r.kendala)+'</td><td>'+esc(r.ket)+'</td><td><div class="row action-row"><button class="check done" data-sv-taken="'+r.id+'">✓ Sudah Diambil</button><button class="x" data-sd="'+r.id+'">Hapus</button></div></td></tr>'}).join("")+ 
+        '</tbody></table></div></div></div>';
+  }
+  $("#ts").innerHTML=html||'<p class="note">Belum ada data Service.</p>';
+}
+function renderServiceExportPicker(){
+  const picker=$("#serviceExportPicker"),groups=groupedByDay(services);
+  if(!groups.size){toast("Belum ada data Service untuk diexport");return}
+  picker.innerHTML='<div class="picker-title">Pilih tanggal Service</div>'+[...groups.entries()].map(([key,list])=>
+    '<button class="picker-item" data-export-service="'+esc(key)+'"><span>'+esc(serviceDayLabel(key))+'</span><span>'+list.length+' data</span></button>'
+  ).join("");
+  picker.classList.remove("hide");
+}
+$("#exS").onclick=renderServiceExportPicker;
+$("#serviceExportPicker").onclick=e=>{
+  const b=e.target.closest("[data-export-service]");
+  if(!b)return;
+  const key=b.dataset.exportService;
+  const rows=services.filter(r=>(dkey(r.ts)||"tanpa-tanggal")===key).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+  if(!rows.length){toast("Tidak ada data Service untuk tanggal itu.");return}
   const aoa=[["Tanggal","Jam","Nama","Nomor HP","Nama Barang","Kode Barang","Kendala","Keterangan"]]
     .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,r.nama,r.hp,r.barang,r.kode,r.kendala,r.ket]}));
-  downloadXlsx(aoa,"Service","DATA SERVICE HAPPY HOME.xlsx",[12,10,24,18,32,18,36,36]);
+  const name=key==="tanpa-tanggal"?"SERVICE TANPA TANGGAL.xlsx":"SERVICE "+key+".xlsx";
+  downloadXlsx(aoa,"Service",name,[12,10,24,18,32,18,36,36]);
+  $("#serviceExportPicker").classList.add("hide");
 };
+$("#simpanService").onclick=simpanService;
 
-/* Service terpisah. Tidak pernah ikut rollover. */
 async function simpanService(){
   const r={
     ts:new Date().toISOString(),
@@ -494,19 +563,28 @@ async function simpanService(){
     renderService();toast("Data Service tersimpan");
   }catch(e){console.error(e);toast("Gagal menyimpan Service.")}
 }
-$("#simpanService").onclick=simpanService;
-
-function renderService(){
-  $("#serviceCnt").textContent=services.length?services.length.toLocaleString("id-ID")+" data Service":"Belum ada data Service.";
-  const list=[...services].sort((a,b)=>String(b.ts).localeCompare(String(a.ts)));
-  $("#ts").innerHTML=list.map(r=>{
-    const f=fmt(r.ts);
-    return "<tr><td>"+f.tgl+"</td><td>"+f.jam+"</td><td>"+esc(r.nama)+"</td><td>"+esc(r.hp)+"</td><td>"+
-      esc(r.barang)+"</td><td>"+esc(r.kode)+"</td><td>"+esc(r.kendala)+"</td><td>"+esc(r.ket)+
-      "</td><td><button class=\"x\" data-sd=\""+r.id+"\">Hapus</button></td></tr>";
-  }).join("");
-}
 $("#ts").onclick=async e=>{
+  const op=e.target.closest("[data-open-service]");
+  if(op){
+    const key=op.dataset.openService;
+    serviceOpen.has(key)?serviceOpen.delete(key):serviceOpen.add(key);
+    renderService();
+    return;
+  }
+  const taken=e.target.closest("[data-sv-taken]");
+  if(taken){
+    const id=Number(taken.dataset.svTaken);
+    const r=services.find(x=>Number(x.id)===id);
+    if(!r)return;
+    if(!confirm("Konfirmasi: Service ini sudah diambil? Data akan langsung dihapus dan tidak bisa dikembalikan."))return;
+    try{
+      if(db)await run("service","readwrite",s=>s.delete(id));
+      else mem.service=mem.service.filter(x=>Number(x.id)!==id);
+      services=services.filter(x=>Number(x.id)!==id);
+      renderService();toast("Service sudah diambil dan dihapus dari data.");
+    }catch(err){toast("Gagal menghapus Service.");console.error(err)}
+    return;
+  }
   const b=e.target.closest("[data-sd]");
   if(!b)return;
   const id=Number(b.dataset.sd);

@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <title>Return Barang - Happy Home</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-version" content="2026.10.07.2">
+<meta name="app-version" content="2026.10.07.3">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20261007-3">
 </head>
 <body>
 <div class="wrap">
@@ -62,10 +62,12 @@
 <section id="t-archive" class="hide">
 <div class="card">
 <div class="row">
+<button class="btn" id="exportA">Export Excel</button>
 <button class="btn alt" id="clearA">Hapus Semua Arsip</button>
 </div>
+<div id="archiveExportPicker" class="picker hide"></div>
 <p class="note" id="arcCnt"></p>
-<p class="note"></p>
+<p class="note">Setiap tanggal memiliki tombol export Excel sendiri. Arsip otomatis memindahkan Return aktif pada pukul 22.00 waktu lokal. Jika aplikasi dibuka setelah 22.00, data hari sebelumnya dan data hari ini juga diproses.</p>
 </div>
 <div class="card">
 <div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode Barang</th><th>Nama Barang</th><th>Jumlah</th><th>Jenis Return</th><th>Status</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody id="ta"></tbody></table></div>
@@ -108,12 +110,13 @@
 </div>
 <div class="card">
 <div class="row"><button class="btn" id="exS">Export Excel Service</button></div>
+<div id="serviceExportPicker" class="picker hide"></div>
 <p class="note" id="serviceCnt"></p>
-<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Nama</th><th>Nomor HP</th><th>Nama Barang</th><th>Kode</th><th>Kendala</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody id="ts"></tbody></table></div>
+<div id="ts"></div>
 </div>
 </section>
 </div>
 <div id="toast" role="status"></div>
-<script src="app.js"></script>
+<script src="app.js?v=20261007-3"></script>
 </body>
 </html>

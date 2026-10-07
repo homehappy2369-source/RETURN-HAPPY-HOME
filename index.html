@@ -13,22 +13,24 @@
 <nav role="tablist">
 <button role="tab" data-t="input" aria-selected="true">Input return</button>
 <button role="tab" data-t="data" aria-selected="false">Data return</button>
+<button role="tab" data-t="archive" aria-selected="false">Arsip</button>
 <button role="tab" data-t="master" aria-selected="false">Master barang</button>
 </nav>
 
 <section id="t-input">
 <div class="card">
-<label for="scan">Scan atau ketik kode barang</label>
-<input type="text" id="scan" autocomplete="off" inputmode="text" autofocus>
+<label for="scan">Scan kode / cari nama barang</label>
+<input type="text" id="scan" autocomplete="off" inputmode="text" autofocus placeholder="Scan kode atau ketik nama barang">
+<div class="suggestions hide" id="suggestions"></div>
 <div class="item" id="item"><span class="k">Barang akan tampil di sini setelah kode di-scan.</span></div>
-<label>Jenis return</label>
+<label>Jenis</label>
 <div class="seg">
 <button class="p" data-j="Pecah Belah" aria-pressed="false">Pecah belah</button>
 <button class="b" data-j="Bukan Pecah Belah" aria-pressed="false">Bukan pecah belah</button>
+<button class="s" data-j="Barang Service" aria-pressed="false">Barang service</button>
 </div>
 <label for="jumlah">Jumlah</label>
 <input type="number" id="jumlah" min="1" step="1" inputmode="numeric" value="1" placeholder="Masukkan jumlah barang">
-
 <label for="ket">Keterangan</label>
 <input type="text" id="ket" autocomplete="off" placeholder="Bebas diisi, boleh kosong">
 <button class="btn full" id="simpan" disabled>Simpan return</button>
@@ -47,10 +49,10 @@
 <div class="card">
 <div class="row">
 <input type="search" id="cari" placeholder="Cari kode, nama, atau keterangan">
-<select id="fj"><option value="">Semua jenis</option><option>Pecah Belah</option><option>Bukan Pecah Belah</option></select>
+<select id="fj"><option value="">Semua jenis</option><option>Pecah Belah</option><option>Bukan Pecah Belah</option><option>Barang Service</option></select>
 </div>
 <p class="note" id="cnt"></p>
-<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode</th><th>Nama barang</th><th>Jumlah</th><th>Jenis</th><th>Keterangan</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode</th><th>Nama barang</th><th>Jumlah</th><th>Jenis</th><th>Status</th><th>Keterangan</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
 </div>
 </section>
 

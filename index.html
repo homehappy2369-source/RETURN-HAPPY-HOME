@@ -21,6 +21,8 @@
 <label for="scan">Scan atau ketik kode barang</label>
 <input type="text" id="scan" autocomplete="off" inputmode="text" autofocus>
 <div class="item" id="item"><span class="k">Barang akan tampil di sini setelah kode di-scan.</span></div>
+<label for="jumlah">Jumlah barang</label>
+<input type="number" id="jumlah" min="1" step="1" value="1" inputmode="numeric">
 <label>Jenis return</label>
 <div class="seg">
 <button class="p" data-j="Pecah Belah" aria-pressed="false">Pecah belah</button>
@@ -47,7 +49,7 @@
 <select id="fj"><option value="">Semua jenis</option><option>Pecah Belah</option><option>Bukan Pecah Belah</option></select>
 </div>
 <p class="note" id="cnt"></p>
-<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode</th><th>Nama barang</th><th>Jenis</th><th>Keterangan</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+<div class="tw"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Kode</th><th>Nama barang</th><th>Jumlah</th><th>Jenis</th><th>Keterangan</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
 </div>
 </section>
 

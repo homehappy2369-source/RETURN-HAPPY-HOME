@@ -21,13 +21,14 @@
 <label for="scan">Scan atau ketik kode barang</label>
 <input type="text" id="scan" autocomplete="off" inputmode="text" autofocus>
 <div class="item" id="item"><span class="k">Barang akan tampil di sini setelah kode di-scan.</span></div>
-<label for="jumlah">Jumlah barang</label>
-<input type="number" id="jumlah" min="1" step="1" value="1" inputmode="numeric">
 <label>Jenis return</label>
 <div class="seg">
 <button class="p" data-j="Pecah Belah" aria-pressed="false">Pecah belah</button>
 <button class="b" data-j="Bukan Pecah Belah" aria-pressed="false">Bukan pecah belah</button>
 </div>
+<label for="jumlah">Jumlah</label>
+<input type="number" id="jumlah" min="1" step="1" inputmode="numeric" value="1" placeholder="Masukkan jumlah barang">
+
 <label for="ket">Keterangan</label>
 <input type="text" id="ket" autocomplete="off" placeholder="Bebas diisi, boleh kosong">
 <button class="btn full" id="simpan" disabled>Simpan return</button>

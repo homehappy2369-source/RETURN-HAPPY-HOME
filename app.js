@@ -32,19 +32,26 @@ function lookup(){
  else{box.className="item bad";box.innerHTML=master.size?'<div class="n">Kode tidak ditemukan</div><div class="k">Periksa kode, atau import master barang terbaru.</div>':'<div class="n">Master barang masih kosong</div><div class="k">Import file Excel di tab Master barang.</div>'}
  upd();
 }
-function upd(){$("#simpan").disabled=!(cur&&jenis)}
+function getJumlah(){
+ const n=Number.parseInt($("#jumlah").value,10);
+ return Number.isFinite(n)&&n>=1?n:0;
+}
+function upd(){$("#simpan").disabled=!(cur&&jenis&&getJumlah()>=1)}
 $("#scan").addEventListener("input",lookup);
-$("#scan").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();lookup();if(cur)$("#ket").focus()}});
+$("#scan").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();lookup();if(cur)$("#jumlah").focus()}});
+$("#jumlah").addEventListener("input",upd);
+$("#jumlah").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#ket").focus()}});
 $("#ket").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();simpan()}});
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{jenis=b.dataset.j;document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",x===b));upd()});
 $("#simpan").onclick=simpan;
 async function simpan(){
  if(!cur||!jenis)return;
- const jumlah=Math.max(1,parseInt($("#jumlah").value,10)||1);
-const r={ts:new Date().toISOString(),kode:cur.kode,nama:cur.nama,jumlah,jenis,ket:$("#ket").value.trim()};
+ const jumlah=getJumlah();
+ if(jumlah<1){toast("Jumlah minimal 1");$("#jumlah").focus();return}
+ const r={ts:new Date().toISOString(),kode:cur.kode,nama:cur.nama,jumlah,jenis,ket:$("#ket").value.trim()};
  try{
   if(db){r.id=await run("ret","readwrite",s=>s.add(r))}else{r.id=Date.now();mem.ret.push(r)}
-  rets.push(r);toast("Tersimpan: "+r.nama);
+  rets.push(r);toast("Tersimpan: "+r.nama+" ("+r.jumlah+" pcs)");
   $("#scan").value="";$("#jumlah").value="1";$("#ket").value="";lookup();render();$("#scan").focus();
  }catch(e){toast("Gagal menyimpan. Coba lagi.")}
 }
@@ -55,7 +62,7 @@ function render(){
  const list=rets.filter(r=>(!fj||r.jenis===fj)&&(!q||(r.kode+" "+r.nama+" "+r.ket).toLowerCase().includes(q))).sort((a,b)=>b.ts.localeCompare(a.ts));
  const show=list.slice(0,300);
  $("#cnt").textContent=list.length?(list.length.toLocaleString("id-ID")+" data"+(list.length>show.length?", menampilkan 300 terbaru. Export memuat semua data.":"")):"Belum ada data return.";
-$("#tb").innerHTML=show.map(r=>{const f=fmt(r.ts);return"<tr><td>"+f.tgl+"</td><td>"+f.jam+"</td><td>"+esc(r.kode)+"</td><td>"+esc(r.nama)+"</td><td><strong>"+(r.jumlah||1)+"</strong></td><td><span class=\"tag "+(r.jenis==="Pecah Belah"?"p":"b")+"\">"+esc(r.jenis)+"</span></td><td>"+esc(r.ket)+"</td><td><button class=\"x\" data-d=\""+r.id+"\">Hapus</button></td></tr>"}).join("");
+ $("#tb").innerHTML=show.map(r=>{const f=fmt(r.ts);return"<tr><td>"+f.tgl+"</td><td>"+f.jam+"</td><td>"+esc(r.kode)+"</td><td>"+esc(r.nama)+'</td><td>'+Number(r.jumlah||1).toLocaleString("id-ID")+'</td><td><span class="tag '+(r.jenis==="Pecah Belah"?"p":"b")+'">'+esc(r.jenis)+"</span></td><td>"+esc(r.ket)+'</td><td><button class="x" data-d="'+r.id+'">Hapus</button></td></tr>'}).join("");
 }
 $("#cari").oninput=render;$("#fj").onchange=render;
 $("#tb").onclick=async e=>{
@@ -75,8 +82,8 @@ $("#tb").onclick=async e=>{
 async function exportXlsx(j,name){
  const rows=rets.filter(r=>r.jenis===j).sort((a,b)=>a.ts.localeCompare(b.ts));
  if(!rows.length){toast("Belum ada data untuk diexport");return}
- const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Keterangan"]].concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,r.jenis,r.ket]}));
- const ws=XLSX.utils.aoa_to_sheet(aoa);ws["!cols"]=[{wch:12},{wch:10},{wch:16},{wch:44},{wch:10}{wch:20},{wch:36}];
+ const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Keterangan"]].concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,Number(r.jumlah||1),r.jenis,r.ket]}));
+ const ws=XLSX.utils.aoa_to_sheet(aoa);ws["!cols"]=[{wch:12},{wch:10},{wch:16},{wch:44},{wch:10},{wch:20},{wch:36}];
  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Return");
  const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
  const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});

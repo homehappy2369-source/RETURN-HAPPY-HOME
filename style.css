@@ -14,7 +14,7 @@ nav button{background:none;border:0;border-bottom:3px solid transparent;padding:
 nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--br)}
 .card{background:var(--sf);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
 label{display:block;font-weight:600;margin:0 0 6px}
-input[type=text],input[type=search],select{width:100%;font:inherit;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+input[type=text],input[type=search],input[type=number],select{width:100%;font:inherit;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
 input:focus,select:focus,button:focus-visible{outline:3px solid var(--br);outline-offset:1px}
 #scan{font-size:24px;font-weight:700;letter-spacing:.5px}
 .item{margin:14px 0;padding:14px;border-radius:8px;background:var(--bg);min-height:64px}

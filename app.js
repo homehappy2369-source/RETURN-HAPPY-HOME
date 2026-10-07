@@ -55,7 +55,7 @@ function render(){
  const list=rets.filter(r=>(!fj||r.jenis===fj)&&(!q||(r.kode+" "+r.nama+" "+r.ket).toLowerCase().includes(q))).sort((a,b)=>b.ts.localeCompare(a.ts));
  const show=list.slice(0,300);
  $("#cnt").textContent=list.length?(list.length.toLocaleString("id-ID")+" data"+(list.length>show.length?", menampilkan 300 terbaru. Export memuat semua data.":"")):"Belum ada data return.";
- $("#tb").innerHTML=show.map(r=>{const f=fmt(r.ts);return"<tr><td>"+f.tgl+"</td><td>"+f.jam+"</td><td>"+esc(r.kode)+"</td><td>"+esc(r.nama)+'</td><td><strong>'+(r.jumlah||1)+'</strong></td><td><span class="tag '+(r.jenis==="Pecah Belah"?"p":"b")+'">'+esc(r.jenis)+"</span></td><td>"+esc(r.ket)+'</td><td><button class="x" data-d="'+r.id+'">Hapus</button></td></tr>'}).join("");
+$("#tb").innerHTML=show.map(r=>{const f=fmt(r.ts);return"<tr><td>"+f.tgl+"</td><td>"+f.jam+"</td><td>"+esc(r.kode)+"</td><td>"+esc(r.nama)+"</td><td><strong>"+(r.jumlah||1)+"</strong></td><td><span class=\"tag "+(r.jenis==="Pecah Belah"?"p":"b")+"\">"+esc(r.jenis)+"</span></td><td>"+esc(r.ket)+"</td><td><button class=\"x\" data-d=\""+r.id+"\">Hapus</button></td></tr>"}).join("");
 }
 $("#cari").oninput=render;$("#fj").onchange=render;
 $("#tb").onclick=async e=>{

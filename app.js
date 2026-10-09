@@ -476,7 +476,10 @@ function renderArchiveExportPicker(){
     ).join("");
   picker.classList.remove("hide");
 }
-$("#exportA").onclick=renderArchiveExportPicker;
+const exportArchiveBtn = $("#exportA");
+if (exportArchiveBtn) {
+  exportArchiveBtn.onclick = renderArchiveExportPicker;
+}
 $("#archiveExportPicker").onclick=e=>{
   const b=e.target.closest("[data-export-archive]");
   if(!b)return;

@@ -435,11 +435,21 @@ function downloadXlsx(aoa,sheet,name,widths){
 
 /* Export Return */
 async function exportXlsx(j,name){
-  const rows=rets.filter(r=>r.jenis===j).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
-  if(!rows.length){toast("Belum ada data untuk diexport");return}
-  const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Keterangan"]]
-    .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,Number(r.jumlah||1),r.jenis,r.ket||""]}));
-  downloadXlsx(aoa,"Return",name,[12,10,16,44,10,22,50]);
+  try{
+    // Baca langsung dari store Return aktif agar ekspor tidak bergantung
+    // pada salinan array di memori yang mungkin belum tersinkron.
+    const source=db ? await getAll("ret") : rets;
+    const rows=source.map(normalizeReturn)
+      .filter(r=>r.jenis===j)
+      .sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+    if(!rows.length){toast("Belum ada data Return aktif untuk jenis ini");return}
+    const aoa=[["Tanggal","Jam","Kode Barang","Nama Barang","Jumlah","Jenis Return","Keterangan"]]
+      .concat(rows.map(r=>{const f=fmt(r.ts);return[f.tgl,f.jam,String(r.kode),r.nama,Number(r.jumlah||1),r.jenis,r.ket||""]}));
+    downloadXlsx(aoa,"Return",name,[12,10,16,44,10,22,50]);
+  }catch(e){
+    console.error("Ekspor Return gagal:",e);
+    toast("Ekspor gagal. Coba muat ulang aplikasi.");
+  }
 }
 $("#exP").onclick=()=>exportXlsx("Pecah Belah","EXPORT RETURN PECAH BELAH.xlsx");
 $("#exB").onclick=()=>exportXlsx("Bukan Pecah Belah","EXPORT RETURN BUKAN PECAH BELAH.xlsx");

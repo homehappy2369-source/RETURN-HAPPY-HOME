@@ -10,7 +10,10 @@ function fmt(ts){const d=new Date(ts);if(Number.isNaN(d.getTime()))return{tgl:"-
 function dkey(ts){const d=new Date(ts);if(Number.isNaN(d.getTime()))return "";return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function normalizeReturn(r){return {...r,jumlah:Number(r.jumlah)||1,status:r.status||"Belum Diambil",ket:r.ket||""}}
 async function api(action,store,data,id){const body={action,store};if(data!==undefined)body.data=data;if(id!==undefined)body.id=id;const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY,"Authorization":"Bearer "+API_KEY},body:JSON.stringify(body)});let out={};try{out=await res.json()}catch{}if(!res.ok||out.error)throw new Error(out.error||`HTTP ${res.status}`);return out}
-async function getAll(store){return (await api("list",storeNames[store])).rows||[]}
+async function getAll(store){
+  const result = await api("list", storeNames[store]);
+  return result.rows || [];
+}
 async function insertRow(store,row){return (await api("insert",storeNames[store],row)).row}
 async function updateRow(store,row){return (await api("update",storeNames[store],row,row.id)).row}
 async function deleteRow(store,id){return api("delete",storeNames[store],undefined,id)}

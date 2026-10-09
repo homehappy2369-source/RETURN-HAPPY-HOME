@@ -480,7 +480,25 @@ const exportArchiveBtn = $("#exportA");
 if (exportArchiveBtn) {
   exportArchiveBtn.onclick = renderArchiveExportPicker;
 }
-$("#archiveExportPicker").onclick=e=>{
+const archiveExportPicker = $("#archiveExportPicker");
+if (archiveExportPicker) {
+  archiveExportPicker.onclick = e => {
+    const b = e.target.closest("[data-export-archive]");
+    if (!b) return;
+
+    const key = b.dataset.exportArchive;
+    const rows = archives.filter(
+      r => (dkey(r.ts) || "tanpa-tanggal") === key
+    ).sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+
+    const name = key === "tanpa-tanggal"
+      ? "ARSIP RETURN TANPA TANGGAL.xlsx"
+      : "ARSIP RETURN " + key + ".xlsx";
+
+    exportReturnDay(rows, name);
+    archiveExportPicker.classList.add("hide");
+  };
+}
   const b=e.target.closest("[data-export-archive]");
   if(!b)return;
   const key=b.dataset.exportArchive;
